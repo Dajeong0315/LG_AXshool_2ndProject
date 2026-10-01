@@ -75,6 +75,7 @@ class Base(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.cfg = yaml.safe_load(Path("config/config.yaml").read_text("utf-8"))
+        self.cfg["instagram"].pop("period_days", None)                       # 인스타 전용 기간(실제 설정)에 테스트가 영향받지 않게 전역 365일 기준으로 고정
         self.cfg["paths"].update(raw=str(self.tmp / "raw"), tables=str(self.tmp / "tables"), logs=str(self.tmp / "logs"),
                                  ig_tags=str(self.tmp / "tags.csv"))
         shutil.copy("config/hashtags_pilot_v2.csv", self.tmp / "tags.csv")
@@ -133,6 +134,13 @@ class TestFilters(Base):
             posts = ia.select_posts(items, tag, group, self.cfg, self.ad_re, set(), stat, [])
             self.assertEqual(stat["period_days"], days, tag)
             self.assertEqual(len(posts), 3 if days == 730 else 0, tag)
+
+    def test_instagram_period_overrides_global(self):
+        self.cfg["instagram"]["period_days"] = 1095
+        items = [post(f"P{i}", f"우리 강아지가 펫캠 보고 반응했어요 {i}번째", days=800) for i in range(3)]
+        stat = self.stat()
+        posts = ia.select_posts(items, "펫캠", "substitute", self.cfg, self.ad_re, set(), stat, [])
+        self.assertEqual((stat["period_days"], len(posts)), (1095, 3))     # 전역 365일이면 0건
 
     def test_no_expansion_when_enough_posts(self):
         items = [post(f"P{i}", f"우리 강아지 로봇청소기 반응 게시물 {i}번째", days=30) for i in range(10)]
