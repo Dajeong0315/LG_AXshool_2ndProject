@@ -103,16 +103,26 @@ def run_emotion_clean(cfg: dict) -> dict:
     raw, tables = Path(cfg["paths"]["raw"]), Path(cfg["paths"]["tables"])
     stats = pd.read_csv(tables / "ig_tag_stats_full.csv", encoding="utf-8-sig")
     docs = pd.read_csv(raw / "instagram.csv", encoding="utf-8-sig", dtype=str).fillna("")
-    docs = docs[docs["keyword"].isin(stats["tag"])].reset_index(drop=True)
+    tags = set(stats["tag"])
+    tag_csv = Path(cfg["paths"].get("ig_tags", "config/hashtags_pilot_v2.csv"))
+    if tag_csv.exists():                          # 사람이 drop 으로 판정한 태그는 이미 수집돼 있어도 정제 대상에서 뺀다
+        tj = pd.read_csv(tag_csv, encoding="utf-8-sig", dtype=str).fillna("")
+        tags -= set(tj.loc[tj["판정"].str.strip().str.lower() == "drop", "tag"])
+    docs = docs[docs["keyword"].isin(tags)].reset_index(drop=True)
     emo_words = read_words("config/ig_emotion_words.txt")
     d = clean_docs(docs, cfg, emo_words, load_markers("config/ig_promo_markers.txt"))
 
+    if cfg["instagram"]["emotion_clean"].get("dedup_body", True):   # 같은 본문(공백 무시)이 반복되면 첫 문서만 남긴다 (반복 홍보·스팸 댓글)
+        norm = d["body"].map(lambda b: " ".join(str(b).split()))
+        dup = (d.status == "kept") & norm.duplicated()
+        d.loc[dup, "status"] = "removed_dup"
     n0 = len(d)
     n_cat, n_promo = int((d.status == "removed_cat").sum()), int((d.status == "removed_promo").sum())
+    n_dup = int((d.status == "removed_dup").sum())
     kept = d[d.status == "kept"]
     emo = kept[kept.emotions != ""]
     funnel = [("정제 대상 문서(본수집 태그의 게시물+댓글)", n0), ("고양이 필터 제거", -n_cat), ("고양이 필터 후", n0 - n_cat),
-              ("홍보 필터 제거", -n_promo), ("홍보 필터 후(정제 완료)", len(kept)),
+              ("홍보 필터 제거", -n_promo), ("본문 중복 제거", -n_dup), ("홍보·중복 필터 후(정제 완료)", len(kept)),
               ("  └ promo_suspect=1 (제거 안 하고 플래그만)", int(kept.promo_suspect.sum())),
               ("감정 키워드가 있는 문서", len(emo)),
               ("  └ target=dog", int((emo.target == "dog").sum())), ("  └ target=security", int((emo.target == "security").sum())),
@@ -126,5 +136,5 @@ def run_emotion_clean(cfg: dict) -> dict:
     rv.to_csv(tables / "ig_emotion_review_sample.csv", index=False, encoding="utf-8-sig")
     d[["url_hash", "keyword", "feed_type", "body", "status", "promo_suspect", "emotions", "target", "security_mention"]].to_csv(
         tables / "ig_emotion_docs_clean.csv", index=False, encoding="utf-8-sig")
-    log.info("감정 데이터 정제: %s", " → ".join(f"{a} {b}" for a, b in funnel[:5]))
+    log.info("감정 데이터 정제: %s", " → ".join(f"{a} {b}" for a, b in funnel[:6]))
     return {"funnel": fdf, "by_target": bt, "review": rv, "docs": d}

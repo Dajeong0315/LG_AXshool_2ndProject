@@ -188,6 +188,7 @@ instagram:
     dog_context_words: ["혼자", "외출", "출근", "퇴근", "집에 두고", "집 비", "여행", "보고싶"]   # 감정 키워드와 함께 나오면 target=dog
     security_words: ["해킹", "보안", "유출", "사생활", "개인정보", "암호화"]                     # target=security
     concern_words: ["걱정", "불안", "무서", "찝찝", "우려", "망설", "두려"]                      # 보안 단어와 함께 나오면 '사용자 우려'로 보고 홍보 제거 대상에서 면제
+    dedup_body: true                    # 같은 본문이 반복되면 첫 문서만 남김
     review_emotions: ["안심", "걱정", "불안"]
     review_max: 100
 
