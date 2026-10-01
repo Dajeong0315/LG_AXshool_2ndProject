@@ -169,6 +169,8 @@ paths:
 # ---------------- 인스타그램 (Apify) ----------------
 # 기간 필터는 위 period_days(365일)를 그대로 쓴다. 반응 태그만 결과가 적으면 기간을 늘린다.
 instagram:
+  period_days: 1095         # 인스타 전용 기간(2년). 목표 1,000건에 못 미치면 1095(3년)로 늘린다. 다른 소스는 위 period_days(365) 유지
+  restore_file: config/ig_dogfilter_restore.csv   # 강아지 단어 필터에서 제거됐지만 검수 후 살린 게시물 url_hash 목록
   expand_tags: ["로봇청소기강아지", "강아지로봇청소기", "로청강아지", "로봇청소기무서워"]
   expand_min_posts: 10     # 365일 적용 후 게시물이 이보다 적으면
   expand_days: 730         # 이 기간으로 확장 (강아지 반응은 제품 버전과 무관)
@@ -186,6 +188,7 @@ instagram:
     dog_context_words: ["혼자", "외출", "출근", "퇴근", "집에 두고", "집 비", "여행", "보고싶"]   # 감정 키워드와 함께 나오면 target=dog
     security_words: ["해킹", "보안", "유출", "사생활", "개인정보", "암호화"]                     # target=security
     concern_words: ["걱정", "불안", "무서", "찝찝", "우려", "망설", "두려"]                      # 보안 단어와 함께 나오면 '사용자 우려'로 보고 홍보 제거 대상에서 면제
+    dedup_body: true                    # 같은 본문이 반복되면 첫 문서만 남김
     review_emotions: ["안심", "걱정", "불안"]
     review_max: 100
 

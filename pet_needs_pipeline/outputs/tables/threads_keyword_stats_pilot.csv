@@ -1,3 +1,19 @@
-﻿keyword,query_group,posts_raw,posts_ko,date_ok,old_posts,nodog_posts,cat_only_posts,ad_posts,short_posts,dup_posts,posts_final,replies_run,replies_raw,old_replies,nodog_replies,ad_replies,short_replies,dup_replies,replies_final,cost_usd
-강아지 혼자,situation,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0174
-펫캠,substitute,30,0,30,0,30,0,0,0,0,0,0,0,0,0,0,0,0,0,0.1479
+﻿keyword,query_group,posts_raw,posts_ko,date_ok,old_posts,nodog_posts,cat_only_posts,ad_posts,short_posts,dup_posts,posts_final,replies_run,replies_raw,old_replies,nodog_replies,ad_replies,short_replies,dup_replies,replies_final,cost_usd,query_hit,recent_1y,dog_hit
+강아지 분리불안,situation,30,30,30,0,2,0,2,0,0,26,0,0,0,0,0,0,0,0,0.0,9.0,30.0,28.0
+강아지 혼자,situation,7,7,7,0,1,0,0,0,0,6,0,0,0,0,0,0,0,0,0.0,5.0,7.0,6.0
+강아지 홈캠,substitute,9,9,9,0,2,0,0,0,0,7,0,0,0,0,0,0,0,0,0.0,0.0,9.0,7.0
+로봇청소기 강아지,robot,30,30,30,0,7,0,1,1,0,21,0,0,0,0,0,0,0,0,0.0,0.0,30.0,23.0
+출근 강아지,situation,30,29,30,0,12,0,0,3,0,15,0,0,0,0,0,0,0,0,0.0,12.0,30.0,18.0
+펫캠,substitute,30,20,29,1,24,5,0,0,0,5,0,0,0,0,0,0,0,0,0.0,14.0,29.0,4.0
+강아지 집에 두고,situation,9,9,9,0,6,0,0,0,2,1,0,0,0,0,0,0,0,0,0.0,0.0,9.0,3.0
+퇴근하고 강아지,situation,6,6,6,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0.0,0.0,6.0,3.0
+강아지 하울링,situation,30,30,30,0,10,0,1,0,0,19,0,0,0,0,0,0,0,0,0.0,0.0,30.0,20.0
+강아지 산책 못,bonding,30,30,30,0,10,2,0,0,4,16,0,0,0,0,0,0,0,0,0.0,0.0,30.0,19.0
+강아지 심심,bonding,30,30,30,0,7,0,1,1,14,7,0,0,0,0,0,0,0,0,0.0,0.0,30.0,23.0
+강아지 놀아주기,bonding,27,27,27,0,7,0,1,1,17,1,0,0,0,0,0,0,0,0,0.0,0.0,27.0,20.0
+노즈워크,bonding,29,29,29,0,18,0,4,0,1,6,0,0,0,0,0,0,0,0,0.0,21.0,29.0,10.0
+강아지 cctv,substitute,7,6,7,0,3,0,0,0,1,3,0,0,0,0,0,0,0,0,0.0,0.0,7.0,4.0
+이동형 홈캠,substitute,30,30,30,0,23,1,0,1,3,3,0,0,0,0,0,0,0,0,0.0,0.0,30.0,6.0
+퍼보,substitute,8,8,8,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0.0,5.0,8.0,0.0
+로청 강아지,robot,27,27,27,0,15,0,0,1,10,1,0,0,0,0,0,0,0,0,0.0,0.0,27.0,12.0
+제트봇 강아지,robot,20,20,20,0,4,0,1,0,12,3,0,0,0,0,0,0,0,0,0.0,0.0,20.0,16.0
