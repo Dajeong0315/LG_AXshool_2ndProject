@@ -1,4 +1,8 @@
 ﻿tag,query_group,posts_raw,old_posts,ad_posts,hashonly_posts,dup_posts,nodog_posts,posts_final,comments_raw,ad_comments,short_comments,comments_final,period_days,ad_all,nonad_dog,recent_all,cost_usd
-펫캠,substitute,200,0,45,15,25,0,115,370,1,174,195,365,45,155,200,1.311
-강아지cctv,substitute,200,183,2,1,14,0,0,0,0,0,0,365,61,139,17,0.46
-강아지홈캠,substitute,200,145,6,9,24,0,16,36,0,16,19,365,32,168,55,0.5428
+강아지cctv,substitute,500,367,39,10,24,0,60,149,0,95,54,1095,161,339,16,1.4927
+강아지홈캠,substitute,425,204,34,24,76,0,87,230,4,112,113,1095,45,380,52,1.5065
+펫캠,substitute,500,0,125,31,344,0,0,0,0,0,0,1095,125,375,290,1.15
+펫카메라,substitute,500,341,43,31,27,0,58,149,0,100,49,1095,133,367,16,1.4927
+반려견홈캠,substitute,8,0,2,0,2,0,4,11,0,1,10,1095,2,6,1,0.0437
+강아지펫캠,substitute,22,3,14,0,4,0,1,0,0,0,0,1095,15,7,8,0.0506
+강아지카메라,substitute,500,379,62,9,13,0,37,98,0,58,40,1095,167,333,34,1.3754

@@ -169,7 +169,7 @@ paths:
 # ---------------- 인스타그램 (Apify) ----------------
 # 기간 필터는 위 period_days(365일)를 그대로 쓴다. 반응 태그만 결과가 적으면 기간을 늘린다.
 instagram:
-  period_days: 730         # 인스타 전용 기간(2년). 목표 1,000건에 못 미치면 1095(3년)로 늘린다. 다른 소스는 위 period_days(365) 유지
+  period_days: 1095         # 인스타 전용 기간(2년). 목표 1,000건에 못 미치면 1095(3년)로 늘린다. 다른 소스는 위 period_days(365) 유지
   restore_file: config/ig_dogfilter_restore.csv   # 강아지 단어 필터에서 제거됐지만 검수 후 살린 게시물 url_hash 목록
   expand_tags: ["로봇청소기강아지", "강아지로봇청소기", "로청강아지", "로봇청소기무서워"]
   expand_min_posts: 10     # 365일 적용 후 게시물이 이보다 적으면
