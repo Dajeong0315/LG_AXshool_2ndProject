@@ -79,6 +79,14 @@ def has_dog(text: str, terms=()) -> bool:
     return bool(DOG_RE.search(t)) or any(w in t for w in terms)
 
 
+def load_restore(cfg: dict) -> set:
+    """강아지 단어 필터에 걸렸지만 사람이 검수해 살리기로 한 게시물 url_hash (config instagram.restore_file)."""
+    f = Path(cfg.get("instagram", {}).get("restore_file", "config/ig_dogfilter_restore.csv"))
+    if not f.exists():
+        return set()
+    return set(pd.read_csv(f, encoding="utf-8-sig", dtype=str)["url_hash"].dropna().str.strip())
+
+
 def shortcode(url: str) -> str:
     m = SHORTCODE_RE.search(url or "")
     return m.group(1) if m else ""
@@ -162,7 +170,7 @@ def filter_posts(items: list[dict], tag: str, group: str, ad_re, seen: set, stat
                  removed: list | None = None) -> list[dict]:
     """게시물 필터: 기간 → 광고 → 해시태그만 캡션 → 중복 → (robot) 강아지 단어. 통과한 게시물 dict 목록.
     강아지 단어 검사 범위는 dog_text 참조(태그 자체에 '강아지'가 들어 있어 항상 통과하는 것을 방지)."""
-    out, per = [], {**cfg, "period_days": days}
+    out, per, restore = [], {**cfg, "period_days": days}, load_restore(cfg)
     terms = cfg.get("animal", {}).get("dog_terms", []) if cfg.get("instagram", {}).get("use_animal_dog_terms", True) else []
     for k in STAT_COLUMNS[2:]:
         stat[k] = 0
@@ -174,7 +182,7 @@ def filter_posts(items: list[dict], tag: str, group: str, ad_re, seen: set, stat
         h = sha(url)
         d = parse_date(it.get("timestamp"))
         fresh, is_ad = in_period(d, per), bool(ad_re.search(cap))
-        dog_ok = group != "robot" or has_dog(dog_text(cap, tag, cfg), terms)
+        dog_ok = group != "robot" or h in restore or has_dog(dog_text(cap, tag, cfg), terms)
         stat["ad_all"] += is_ad                                  # 아래 세 집계는 필터 순서·기간과 무관한 리포트용 수치
         stat["recent_all"] += in_period(d, cfg)
         stat["nonad_dog"] += (not is_ad) and dog_ok
@@ -201,7 +209,8 @@ def filter_posts(items: list[dict], tag: str, group: str, ad_re, seen: set, stat
 
 def select_posts(items, tag, group, cfg, ad_re, seen: set, stat: dict, removed: list) -> list[dict]:
     """기본 기간(period_days=365) 적용. 반응 태그(expand_tags)는 결과가 expand_min_posts 미만이면 expand_days(730)로 확장."""
-    ig, days = cfg.get("instagram", {}), cfg["period_days"]
+    ig = cfg.get("instagram", {})
+    days = ig.get("period_days", cfg["period_days"])      # 인스타 전용 기간 (없으면 전역 period_days)
     trial, rm = set(seen), []
     posts = filter_posts(items, tag, group, ad_re, trial, stat, cfg, days, rm)
     if group == "robot" and tag in ig.get("expand_tags", []) and len(posts) < ig.get("expand_min_posts", 10):
