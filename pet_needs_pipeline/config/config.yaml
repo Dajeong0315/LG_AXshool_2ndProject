@@ -1,0 +1,203 @@
+# ==============================================================
+# 반려견 보호자 니즈 크롤링·분석 파이프라인 설정
+# - 이 파일만 고치면 수집량·키워드·기간·대기시간을 바꿀 수 있다.
+# - 계정 아이디·비밀번호는 절대 여기에 쓰지 않는다 (카페 로그인은 브라우저에서 직접).
+# - API 키는 환경변수로만 받는다: NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, YOUTUBE_API_KEY
+# ==============================================================
+
+test_mode: false           # true: 사이트당 test_limit_per_site 건만 수집하고 전체 흐름 검증
+test_limit_per_site: 10
+scale: 10                  # 사이트별 target에 곱한다. 1 → 약 1,000건 / 10 → 약 1만 건
+
+period_days: 365           # 실행일 기준 최근 N일 글만 (최근 1년)
+
+wait:                      # 요청 사이 무작위 대기(초)
+  min_sec: 1.0
+  max_sec: 3.0
+
+respect_robots: true       # robots.txt에서 막힌 경로는 본문을 가져오지 않는다
+user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 (student-research; LG-AX-School)"
+anonymize_url: false       # true면 url 칸에 원본 대신 해시를 저장 (원문 검토가 필요 없을 때)
+query_prefix: "강아지"      # 키워드에 강아지/반려견이 없으면 앞에 붙여 검색
+
+# 사이트 목표량을 키워드 그룹별로 나누는 비율 (합 1.0). explore = 기능 중립 탐색 키워드
+group_ratio:
+  explore: 0.25
+  storage: 0.15
+  auto_feed: 0.15
+  vacuum: 0.15
+  water: 0.15
+  nutrition: 0.15
+
+# ---------------- A 코퍼스(견주 고민 분석)에 넣을 source ----------------
+# data/raw/{source}.csv 중 여기 적힌 것만 전처리·분석에 들어간다.
+# instagram(고민 도출용이 아님)과 threads(파일럿 관련도 확인 후 결정)는 기본 제외. 편입하려면 아래 목록에 이름을 추가한다.
+corpus:
+  sources: [naver_blog, naver_kin, naver_cafe, youtube, manual_reviews, shop_reviews]
+
+# ---------------- 수집 사이트 (혼합안: 커뮤니티 70% + 리뷰 30%) ----------------
+sites:
+  naver_blog:
+    enabled: true
+    target: 450            # ×scale → 4,500
+    fetch_body: true       # false면 검색 API 요약문만 사용
+  naver_kin:
+    enabled: true
+    target: 80             # 작성일은 질문 페이지에서 읽는다 (없으면 제외)
+    old_streak_stop: 30    # 기간 밖 글이 연속 이만큼 나오면 그 키워드는 중단 (시간 절약)
+  naver_cafe:
+    enabled: false         # 테스트 결과 robots.txt가 카페 본문 경로를 막음 → 매니저 동의 받은 카페만 켤 것
+    target: 200
+    cafe_ids: []           # 예: ["dogpalza"] — 비우면 검색 결과의 모든 카페. 회원공개 카페는 매니저 동의 후 추가
+    respect_robots: true   # 매니저 서면 동의를 받은 카페만 대상으로 할 때에 한해 false 검토
+  youtube:
+    enabled: true
+    target: 470            # ×scale → 4,700 (검색 1회 = 100 unit, 하루 10,000 unit 한도)
+    videos_per_keyword: 10
+    comments_per_video: 100
+  manual_reviews:          # 쿠팡 등 자동 수집이 막힌 곳의 리뷰를 팀원이 CSV로 붙여넣는 폴더
+    enabled: true
+    target: 300
+    folder: data/manual    # 컬럼: source,url,title,body,date,rating,keyword
+    require_dog_word: false
+    keywords:              # CSV의 keyword 칸에 이 값 중 하나를 적는다 (제품 카테고리)
+      storage: ["사료 보관통", "생식 소분 용기"]
+      auto_feed: ["자동급식기", "습식 자동급식기"]
+      vacuum: ["진공포장기"]
+      water: ["자동급수기", "강아지 정수기"]
+      explore: ["급여 저울", "슬로우 식기", "펫 홈카메라", "급식 매트"]
+  shop_reviews:            # robots.txt가 허용하는 쇼핑몰만. 선택자는 사이트 구조를 보고 직접 채운다
+    enabled: false
+    target: 0
+    require_dog_word: false
+    max_pages: 10
+    products: []           # 예: [{url: "https://...", keyword: "자동급식기"}]
+    selectors:
+      review_item: ""      # 리뷰 1개를 감싸는 요소
+      body: ""
+      date: ""
+      rating: ""           # 별점 텍스트(숫자)가 들어있는 요소, 없으면 비움
+      next_page: ""        # 다음 페이지 버튼
+    keywords:
+      storage: ["사료 보관통"]
+      auto_feed: ["자동급식기"]
+      vacuum: ["진공포장기"]
+      water: ["자동급수기"]
+      explore: []
+
+naver_api:
+  mode: hub                # legacy = 네이버 개발자센터 키 / hub = 네이버 클라우드 API HUB 키
+  base_url: "https://openapi.naver.com/v1/search"
+  hub_base_url: "https://naverapihub.apigw.ntruss.com/search/v1"
+  display: 100
+  max_start: 1000
+
+youtube_api:
+  base_url: "https://www.googleapis.com/youtube/v3"
+
+# ---------------- 검색 키워드 (계획서 B안 표 그대로) ----------------
+keywords:
+  storage: ["사료 보관 눅눅", "사료 산패", "사료 벌레", "생식 냉동 보관", "생식 해동", "화식 보관 기간", "냉동실 자리 생식",
+            "사료 보관 방법", "사료 보관통", "사료 밀폐용기", "대용량 사료", "사료 유통기한", "사료 곰팡이", "생식 소분", "화식 냉동 보관"]
+  auto_feed: ["자동급식기 고장", "자동급식기 사료 걸림", "습식 자동급식", "출근 강아지 밥", "여행 강아지 밥 챙기기", "강아지 급여 시간 규칙", "강아지 급여량 계산",
+              "자동급식기", "자동급식기 추천", "자동급식기 후기", "외출 강아지 밥", "강아지 밥 시간", "강아지 하루 급여 횟수", "강아지 과식", "펫캠 급식기"]
+  vacuum: ["생식 진공포장", "사료 소분 진공", "진공포장기 추천 강아지", "진공포장 귀찮", "수제간식 보관", "냉동 생식 성에",
+           "진공포장기", "진공 밀폐용기", "사료 소분 보관", "생식 소분 포장", "간식 진공 보관", "사료 지퍼백", "소분 냉동"]
+  water: ["물그릇 엎음", "물 안 마시는 강아지", "강아지 음수량", "강아지 정수기 세척", "물그릇 물때", "강아지 물 갈아주기",
+          "강아지 물그릇", "강아지 급수기", "강아지 정수기", "강아지 물 먹는 양", "강아지 물 자주 마심", "강아지 물 안 먹어요", "분수 급수기"]
+  nutrition: ["강아지 영양 계산", "강아지 생식 영양", "화식 레시피 영양", "강아지 칼슘 인 비율", "강아지 영양제",
+              "강아지 영양 불균형", "생식 레시피", "강아지 단백질", "강아지 칼로리 계산", "수제 사료 레시피"]
+  explore: ["강아지 밥 챙기기", "강아지 생식 시작 고민", "강아지 사료 고민", "반려견 식사 관리 어려움", "강아지 혼자 두고 출근", "강아지 편식", "강아지 사료 바꾸기", "강아지 식기 설거지",
+            "강아지 밥", "강아지 사료", "강아지 식단", "강아지 식사", "반려견 급여", "강아지 사료 거부", "강아지 밥 안먹음",
+            "강아지 사료 알레르기", "강아지 소화", "강아지 식욕", "강아지 간식 관리", "노견 식사", "강아지 체중 관리", "1인가구 강아지"]
+
+# ---------------- 분석용 사전 ----------------
+feature_labels:
+  storage: "① 생식·사료 보관"
+  auto_feed: "② 자동 급여"
+  vacuum: "③ 진공포장"
+  water: "④ 물 급여"
+  nutrition: "⑤ 영양 설계"
+
+# 문서·문장에 이 단어가 하나라도 있으면 해당 기능 언급으로 본다 (부분 문자열 일치)
+feature_dict:
+  storage: ["보관", "눅눅", "산패", "벌레", "밀폐", "보관통", "해동", "냉동실", "냉장", "유통기한", "소분 용기", "상했", "상하"]
+  auto_feed: ["자동급식", "급식기", "자동 급식", "예약 급여", "급여 시간", "밥 시간", "출근", "외출", "여행", "급여량", "배식"]
+  vacuum: ["진공", "밀봉", "실링", "지퍼백", "소분 포장", "성에", "포장기"]
+  water: ["물그릇", "급수기", "정수기", "음수량", "물 안 마", "물을 안", "물때", "물 갈", "엎어", "엎질", "엎음", "엎었"]
+  nutrition: ["영양", "칼슘", "인 비율", "단백질", "칼로리", "kcal", "레시피", "식단", "보충제", "결핍", "성분표", "배합"]
+
+feed_type_dict:
+  생식: ["생식", "바프", "barf", "생고기", "날고기", "생육"]
+  화식: ["화식", "자연식", "수제식", "익혀서", "수제 사료"]
+  건사료: ["건사료", "키블", "사료 알갱이", "알갱이", "그레인프리", "로얄캐닌", "오리젠", "나우 사료"]
+
+animal:
+  dog_terms: ["강아지", "반려견", "댕댕", "멍멍", "강쥐", "견주", "애견", "개밥", "푸들", "말티즈", "포메", "시바", "비숑", "리트리버", "진돗개", "치와와", "닥스", "웰시코기", "슈나우저", "시츄", "요크셔", "보더콜리"]
+  cat_terms: ["고양이", "냥이", "고영희", "캣", "묘종", "고양이 모래", "츄르", "코숏", "러시안블루", "먼치킨", "스코티시", "페르시안", "캣타워"]
+
+# ---------------- 전처리 ----------------
+ad_patterns: ["소정의 원고료", "원고료", "업체로부터 제공", "제품을 제공받", "무상으로 제공", "무상 제공", "지원받아", "제공받아 작성", "협찬", "체험단", "체험팩", "서포터즈", "유료광고", "#광고", "할인코드", "쿠폰 코드", "구매 링크", "분양", "파트너스 활동", "수수료를 제공받", "수수료를 받", "쇼핑 커넥트", "쇼핑커넥트", "공구", "공동구매", "레뷰", "리뷰노트"]
+max_links: 3               # 본문 링크가 이 개수 이상이면 광고로 본다
+min_body_len: 10           # 공백 제외 글자 수
+near_dup_threshold: 0.9    # 본문 유사도(0~1) 이 값 이상이면 중복
+
+# ---------------- 분석 ----------------
+min_feature_docs: 50       # 기능 언급 문서가 이보다 적으면 '표본 부족'으로 표시
+lda:
+  n_topics: 8
+  auto_k: false            # true면 k_candidates 중 UMass coherence가 가장 높은 k 사용
+  k_candidates: [5, 6, 8, 10, 12, 15]
+  max_features: 3000
+  min_df: 3
+  max_df: 0.5
+  top_n_words: 10
+  residual_only: true      # 기능 사전에 안 걸린 문서만으로 토픽 → 신규 페인포인트
+  exclude_query_terms: true  # 검색 키워드·급여 방식 단어를 토픽에서 제외
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  figures: outputs/figures
+  tables: outputs/tables
+  logs: logs
+  stopwords: config/stopwords.txt
+  user_dict: config/user_dict.txt
+  negative_words: config/negative_words.txt
+  positive_words: config/positive_words.txt
+
+# ---------------- 인스타그램 (Apify) ----------------
+# 기간 필터는 위 period_days(365일)를 그대로 쓴다. 반응 태그만 결과가 적으면 기간을 늘린다.
+instagram:
+  expand_tags: ["로봇청소기강아지", "강아지로봇청소기", "로청강아지", "로봇청소기무서워"]
+  expand_min_posts: 10     # 365일 적용 후 게시물이 이보다 적으면
+  expand_days: 730         # 이 기간으로 확장 (강아지 반응은 제품 버전과 무관)
+  # 강아지 판별 범위(모든 robot 태그 공통): 검색 태그와 변형(robot 층 태그 전체, 띄어쓰기·_ 변형)만 제외한 해시태그 + 본문
+  intersection_tags: ["로봇청소기"]    # 교집합 방식 실험 태그 (판정 제안을 적중률 기준으로 계산, 직접 태그와 비교표 생성)
+  compare_frozen: true                 # true 이고 ig_intersection_compare.csv 가 있으면 덮어쓰지 않는다 (선정 근거 보존)
+  compare_baseline: "로봇청소기강아지"   # 교집합 태그와 나란히 비교할 직접 태그
+  tag_overrides:                       # 태그별 수량 (CLI --posts/--comments 가 있으면 그쪽이 우선)
+    로봇청소기: {posts: 50, comments: 10}
+  price_per_1000: {posts: 2.3, comments: 2.3}   # Starter 실제 청구 단가($/1,000건, 2026-09-30 Apify 실행 기록으로 확인). 무료 플랜은 게시물 2.6 / 댓글 2.6
+  use_animal_dog_terms: true           # 강아지 판별에 animal.dog_terms(견종·애칭·견주 등)를 합친다 (모든 robot 태그 공통)
+  emotion_clean:                       # 대체재 감정 데이터 정제 (python main.py --source instagram --emotion-clean)
+    cat_extra: ["집사"]                 # animal.cat_terms 에 더할 고양이 단어. 고양이 단어가 있고 강아지 판별에 안 걸리면 제거
+    dog_emoji: ["🐶", "🐕", "🐩", "🐾"]  # 강아지 판별 사전에 더하는 이모지
+    dog_context_words: ["혼자", "외출", "출근", "퇴근", "집에 두고", "집 비", "여행", "보고싶"]   # 감정 키워드와 함께 나오면 target=dog
+    security_words: ["해킹", "보안", "유출", "사생활", "개인정보", "암호화"]                     # target=security
+    concern_words: ["걱정", "불안", "무서", "찝찝", "우려", "망설", "두려"]                      # 보안 단어와 함께 나오면 '사용자 우려'로 보고 홍보 제거 대상에서 면제
+    review_emotions: ["안심", "걱정", "불안"]
+    review_max: 100
+
+# ---------------- 스레드 (Apify) ----------------
+# 기간은 위 period_days(365일)를 그대로 쓴다 (액터 입력 postedAfter = 오늘 - period_days).
+threads:
+  actors: {posts: automation-lab/threads-scraper, replies: automation-lab/threads-replies-scraper}
+  search_sort: recent                   # 액터 입력 searchSort (top | recent)
+  keywords_csv: config/threads_keywords.csv
+  relevance_words: config/threads_relevance_words.txt
+  # 단가($): Apify Starter(BRONZE 티어) 기준, 액터 스토어 과금표(2026-10 확인). 게시물/답글 건당 + 실행당 시작 비용
+  price: {post: 0.00435, reply: 0.00026162, start_posts: 0.0174, start_replies: 0.005}
+  korean_min_ratio: 0.3                 # 글자(한글·영문·가나·한자) 중 한글 비율이 이 이상이면 '한국어 글'로 본다
+  complaint_words: ["별로", "불편", "끊겨", "느려", "비싸", "소용없", "의미없", "더 미안", "보기만", "안 보여", "배터리"]
+

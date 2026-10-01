@@ -1,0 +1,9 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+# Apify 원본 응답에는 작성자 아이디·프로필이 그대로 들어 있으므로 커밋하지 않는다
+data/raw/instagram_raw/
+logs/
+# 스레드 원본 응답에도 작성자 정보가 들어 있다
+data/raw/threads_raw/
