@@ -3,10 +3,14 @@
 노트북(카페 크롤링)과 같은 방식: 정규식 정제 → Okt 형태소(명사·형용사·동사) → 불용어 → TF-IDF → KMeans.
 차이점: 광고 의심 제거, 게시물/댓글 분리, k 는 실루엣으로 선택(4~10).
 
-입력: outputs/tables/ig_clean_1033.csv
+입력: outputs/tables/ig_clean_1033.csv (기본). 스레드 등 다른 CSV 를 합치려면 --inputs 로 여러 개 지정
+      (필수 컬럼: body / 선택: source, feed_type, url, promo_suspect, emotions, target)
 출력: outputs/tables/ig_cluster_*.csv, ig_cluster_hypo.xlsx
-실행: python -m analysis.ig_cluster_hypo   (pet_needs_pipeline 폴더에서, Java 필요: konlpy Okt)
+실행: python -m analysis.ig_cluster_hypo [--inputs a.csv b.csv] [--split]
+      기본은 게시물·댓글을 합쳐서 한 번에 군집화, --split 이면 feed_type 별로 따로.
+      (pet_needs_pipeline 폴더에서, Java 필요: konlpy Okt)
 """
+import argparse
 import re
 from pathlib import Path
 
@@ -109,7 +113,7 @@ def cluster(df: pd.DataFrame, label: str):
         sim = cosine_similarity(X[pos], km.cluster_centers_[c].reshape(1, -1)).ravel()
         for p in pos[sim.argsort()[::-1][:3]]:
             r = df.iloc[p]
-            reps.append({"세트": label, "군집": c, "url": r["url"], "target": r.get("target", ""),
+            reps.append({"세트": label, "군집": c, "source": r.get("source", ""), "feed_type": r.get("feed_type", ""), "url": r["url"], "target": r.get("target", ""),
                          "emotions": r.get("emotions", ""), "본문": str(r["body"])[:400].replace("\n", " ")})
     return ks, pd.DataFrame(summ).sort_values("문서수", ascending=False), pd.DataFrame(reps)
 
@@ -123,14 +127,35 @@ def hypo_overall(raw: pd.DataFrame, used: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def main():
-    raw = pd.read_csv(SRC, encoding="utf-8-sig", dtype={"promo_suspect": int})
+def load(paths) -> pd.DataFrame:
+    dfs = []
+    for p in paths:
+        d = pd.read_csv(p, encoding="utf-8-sig")
+        d["source"] = d["source"] if "source" in d else Path(p).stem
+        dfs.append(d)
+    raw = pd.concat(dfs, ignore_index=True)
+    for c, v in [("feed_type", ""), ("url", ""), ("target", ""), ("emotions", ""), ("promo_suspect", 0)]:
+        if c not in raw:
+            raw[c] = v
+    raw["promo_suspect"] = raw["promo_suspect"].fillna(0).astype(int)
     raw["body"] = raw["body"].fillna("")
+    return raw
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--inputs", nargs="+", default=[str(SRC)])
+    ap.add_argument("--split", action="store_true", help="feed_type(게시물/댓글) 별로 따로 군집화")
+    args = ap.parse_args()
+    raw = load(args.inputs)
     used = raw[raw["promo_suspect"] == 0].drop_duplicates("body").reset_index(drop=True)
     print(f"원본 {len(raw)} → 광고 제외·중복 제거 {len(used)}")
     okt, stop = Okt(), load_stop()
+    sets = [("전체(게시물+댓글)", used)]
+    if args.split:
+        sets = [(lb, used[used.feed_type == ft]) for lb, ft in [("게시물", "post"), ("댓글", "comment")]]
     funnel, ks_all, sm_all, rp_all = [], [], [], []
-    for label, d in [("게시물", used[used.feed_type == "post"]), ("댓글", used[used.feed_type == "comment"])]:
+    for label, d in sets:
         dt = drop_templates(d)
         tk = tokenize(dt, okt, stop)
         funnel.append({"세트": label, "광고 제외 후": len(d), "템플릿 중복 제거 후": len(dt), f"토큰 {MIN_TOKENS}개 이상(군집 대상)": len(tk)})
@@ -147,7 +172,7 @@ def main():
         for name, df in outs.items():
             df.to_csv(OUT / f"{name}.csv", index=False, encoding="utf-8-sig")
             df.to_excel(xw, sheet_name=name.replace("ig_", "")[:31], index=False)
-    print(outs["ig_cluster_summary"][["세트", "군집", "문서수", "비중(%)", "대표 키워드", "가설 후보(≥25%)"]].to_string())
+    print(outs["ig_cluster_summary"][["군집", "문서수", "비중(%)", "대표 키워드", "가설 후보(≥25%)"]].to_string())
 
 
 if __name__ == "__main__":
